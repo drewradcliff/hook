@@ -1,0 +1,11 @@
+node_modules
+dist
+.pnpm-store
+.DS_Store
+*.log
+.env
+.env.local
+.hook/events.db
+.hook/events.db-journal
+.hook/events.db-wal
+.hook/events.db-shm

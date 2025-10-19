@@ -19,13 +19,19 @@ Test, verify, replay, and debug your app's webhooks — locally or deployed.
 # Install dependencies
 pnpm install
 
+# Initialize hook config
+pnpm hook init
+
 # Start the dev server
 pnpm dev
 
 # In another terminal, test a webhook
-curl -X POST http://localhost:3420/webhooks/test \
+curl -X POST http://localhost:3420/webhooks/example \
   -H "Content-Type: application/json" \
   -d '{"message":"Hello from Hook!"}'
+
+# Replay event
+pnpm hook replay 1
 
 # View the dashboard
 open http://localhost:3420/_dashboard
@@ -65,30 +71,6 @@ export default defineWebhook({
   },
 });
 ```
-
-## Development Commands
-
-```bash
-# Start the dev server
-pnpm dev
-
-# Run any hook command
-pnpm hook init
-pnpm hook replay 1
-
-# Build all packages
-pnpm build
-```
-
-## Dashboard
-
-Visit `http://localhost:3420/_dashboard` to view all webhook events, inspect payloads, and replay events.
-
-## API Endpoints
-
-- `GET /_api/events` - List all events
-- `GET /_api/events/:id` - Get single event
-- `POST /_api/events/:id/replay` - Replay an event
 
 ## License
 

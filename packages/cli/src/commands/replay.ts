@@ -12,7 +12,7 @@ export async function replayCommand(
     }
 
     const port = options?.port || 3420;
-    const url = `http://localhost:${port}/_api/events/${id}/replay`;
+    const url = `http://localhost:${port}/api/events/${id}/replay`;
 
     console.log(chalk.dim(`Replaying event ${id}...`));
 
@@ -23,11 +23,7 @@ export async function replayCommand(
         console.error(
           chalk.red(`Error: Event ${id} not found or server not running`)
         );
-        console.log(
-          chalk.dim(
-            `\nMake sure the dev server is running: ${chalk.cyan("pnpm dev")}`
-          )
-        );
+        console.log(chalk.dim(`\nMake sure the hook dev server is running`));
       } else {
         const error = await response.text();
         console.error(chalk.red(`Error: ${error}`));
@@ -55,11 +51,7 @@ export async function replayCommand(
   } catch (error) {
     if (error instanceof Error && error.message.includes("ECONNREFUSED")) {
       console.error(chalk.red("Error: Could not connect to dev server"));
-      console.log(
-        chalk.dim(
-          `\nMake sure the dev server is running: ${chalk.cyan("pnpm dev")}`
-        )
-      );
+      console.log(chalk.dim(`\nMake sure the hook dev server is running`));
     } else {
       console.error(chalk.red("Error replaying event:"), error);
     }

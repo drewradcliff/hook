@@ -6,7 +6,7 @@ import fs from "fs";
 
 let db: ReturnType<typeof drizzle> | null = null;
 
-export function initDatabase(dbPath: string = ".hook/events.db") {
+export function initDatabase(dbPath: string = "./hook/events.db") {
   const dir = path.dirname(dbPath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });

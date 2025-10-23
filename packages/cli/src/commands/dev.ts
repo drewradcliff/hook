@@ -1,4 +1,4 @@
-import { createServer, initDatabase } from "@hook/core";
+import { createServer, initDatabase, loadConfig } from "@hook/core";
 import { watch } from "chokidar";
 import chalk from "chalk";
 import fs from "fs";
@@ -10,26 +10,29 @@ const __dirname = path.dirname(__filename);
 
 export async function devCommand() {
   const port = 3420;
-  const hooksDir = ".hook/hooks";
 
   try {
+    console.log(chalk.dim("Loading configuration..."));
+    const config = await loadConfig();
+
     console.log(chalk.dim("Initializing database..."));
-    initDatabase();
+    const dbPath = path.join(config.out, "events.db");
+    initDatabase(dbPath);
 
     console.log(chalk.dim("Creating server..."));
     const dashboardDir = findDashboardDir();
-    const server = createServer({ port, hooksDir, dashboardDir });
+    const server = createServer({ port, config, dashboardDir });
 
-    console.log(chalk.dim("Loading webhooks...\n"));
-    await server.loadWebhooks();
+    console.log(chalk.dim("Scanning webhooks...\n"));
+    server.scanWebhooks();
 
     const webhooks = server.getWebhooks();
     if (webhooks.size === 0) {
       console.log(
-        chalk.yellow("⚠ No webhooks found. Run"),
-        chalk.cyan("hook init"),
-        chalk.yellow("to create an example.")
+        chalk.yellow("⚠ No webhooks found in"),
+        chalk.cyan(config.webhooks)
       );
+      console.log(chalk.dim("  Create route files to define webhooks"));
     }
 
     const { serve } = await import("@hono/node-server");
@@ -40,16 +43,16 @@ export async function devCommand() {
 
     console.log(chalk.bold.green(`\n✓ Hook server running!\n`));
     console.log(
-      chalk.dim("Server:    "),
-      chalk.cyan(`http://localhost:${port}`)
-    );
-    console.log(
       chalk.dim("Dashboard: "),
-      chalk.cyan(`http://localhost:${port}/_dashboard`)
+      chalk.cyan(`http://localhost:${port}/`)
     );
     console.log(
       chalk.dim("API:       "),
-      chalk.cyan(`http://localhost:${port}/_api/events`)
+      chalk.cyan(`http://localhost:${port}/api/events`)
+    );
+    console.log(
+      chalk.dim("Database:  "),
+      chalk.cyan(path.join(config.out, "events.db"))
     );
 
     if (webhooks.size > 0) {
@@ -57,7 +60,7 @@ export async function devCommand() {
       webhooks.forEach((webhook) => {
         console.log(
           chalk.dim("  •"),
-          chalk.cyan(`${webhook.method} ${webhook.path}`),
+          chalk.cyan(webhook.path),
           chalk.dim(`(${webhook.name})`)
         );
       });
@@ -65,23 +68,30 @@ export async function devCommand() {
 
     console.log(chalk.dim("\nWatching for changes...\n"));
 
-    const watcher = watch(hooksDir, {
-      persistent: true,
-      ignoreInitial: true,
-    });
+    const webhooksDir = path.resolve(config.webhooks);
+    let watcher: ReturnType<typeof watch> | null = null;
 
-    watcher.on("all", async (event, filePath) => {
-      console.log(chalk.dim(`\n[${event}] ${filePath}`));
-      console.log(chalk.dim("Reloading webhooks...\n"));
-      await server.loadWebhooks();
+    if (fs.existsSync(webhooksDir)) {
+      watcher = watch(webhooksDir, {
+        persistent: true,
+        ignoreInitial: true,
+      });
 
-      const webhooks = server.getWebhooks();
-      console.log(chalk.green(`✓ Loaded ${webhooks.size} webhook(s)\n`));
-    });
+      watcher.on("all", async (event, filePath) => {
+        console.log(chalk.dim(`\n[${event}] ${filePath}`));
+        console.log(chalk.dim("Rescanning webhooks...\n"));
+        server.scanWebhooks();
+
+        const webhooks = server.getWebhooks();
+        console.log(chalk.green(`✓ Found ${webhooks.size} webhook(s)\n`));
+      });
+    }
 
     const shutdown = () => {
       console.log(chalk.dim("\n\nShutting down..."));
-      watcher.close();
+      if (watcher) {
+        watcher.close();
+      }
       srv.close(() => {
         console.log(chalk.dim("Server closed"));
         process.exit(0);

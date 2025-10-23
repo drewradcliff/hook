@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import { initCommand } from "./commands/init.js";
 import { devCommand } from "./commands/dev.js";
 import { replayCommand } from "./commands/replay.js";
 
@@ -11,11 +10,6 @@ program
   .name("hook")
   .description("TypeScript-native webhook platform")
   .version("0.1.0");
-
-program
-  .command("init")
-  .description("Initialize hook in your project")
-  .action(initCommand);
 
 program
   .command("dev")

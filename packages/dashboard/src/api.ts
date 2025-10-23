@@ -1,4 +1,4 @@
-const API_BASE = "/_api";
+const API_BASE = "/api";
 
 export interface Event {
   id: number;

@@ -7,29 +7,29 @@ import {
   getEventById,
   updateEventStatus,
 } from "./events.js";
-import { verifySignature } from "./signature.js";
 import { replayEvent } from "./replay.js";
-import { loadWebhooks } from "./loader.js";
-import type { WebhookDefinition } from "./define.js";
+import { scanWebhooks, type WebhookMetadata } from "./scanner.js";
+import type { HookConfig } from "./config.js";
 import path from "path";
 import fs from "fs";
 
 export interface ServerOptions {
   port?: number;
-  hooksDir?: string;
+  config?: HookConfig;
   dashboardDir?: string;
+  proxyUrl?: string;
 }
 
 export function createServer(options: ServerOptions = {}) {
   const app = new Hono();
-  const { hooksDir = ".hook/hooks", dashboardDir } = options;
+  const { config, dashboardDir, proxyUrl = "http://localhost:3000" } = options;
 
-  let webhooks = new Map<string, WebhookDefinition>();
+  let webhooks = new Map<string, WebhookMetadata>();
 
-  app.use("/_api/*", cors());
-  app.use("/_dashboard/*", cors());
+  app.use("/api/*", cors());
+  app.use("/*", cors());
 
-  app.get("/_api/events", async (c) => {
+  app.get("/api/events", async (c) => {
     const limit = Number(c.req.query("limit")) || 100;
     const offset = Number(c.req.query("offset")) || 0;
     const webhookName = c.req.query("webhookName");
@@ -39,7 +39,7 @@ export function createServer(options: ServerOptions = {}) {
     return c.json({ events });
   });
 
-  app.get("/_api/events/:id", async (c) => {
+  app.get("/api/events/:id", async (c) => {
     const id = Number(c.req.param("id"));
     const event = await getEventById(id);
 
@@ -50,24 +50,23 @@ export function createServer(options: ServerOptions = {}) {
     return c.json({ event });
   });
 
-  app.post("/_api/events/:id/replay", async (c) => {
+  app.post("/api/events/:id/replay", async (c) => {
     const id = Number(c.req.param("id"));
-    const result = await replayEvent(id, webhooks);
+    const result = await replayEvent(id, webhooks, proxyUrl);
 
     return c.json(result);
   });
 
   if (dashboardDir && fs.existsSync(dashboardDir)) {
     app.use(
-      "/_dashboard/*",
+      "/*",
       serveStatic({
         root: dashboardDir,
-        rewriteRequestPath: (path: string) => path.replace(/^\/_dashboard/, ""),
       })
     );
   }
 
-  app.get("/_dashboard", async (c) => {
+  app.get("/", async (c) => {
     if (dashboardDir && fs.existsSync(dashboardDir)) {
       const indexPath = path.join(dashboardDir, "index.html");
       if (fs.existsSync(indexPath)) {
@@ -103,7 +102,7 @@ export function createServer(options: ServerOptions = {}) {
     const method = c.req.method;
 
     const webhook = Array.from(webhooks.values()).find(
-      (w) => w.path === requestPath && w.method === method
+      (w) => w.path === requestPath
     );
 
     if (!webhook) {
@@ -127,97 +126,71 @@ export function createServer(options: ServerOptions = {}) {
         headers[key] = value;
       });
 
-      if (webhook.secret && webhook.signatureHeader) {
-        const signature = headers[webhook.signatureHeader.toLowerCase()];
-        if (!signature) {
-          await saveEvent({
-            webhookName: webhook.name,
-            path: requestPath,
-            method,
-            headers,
-            body,
-            status: "failed",
-            error: "Missing signature header",
-            responseTime: Date.now() - startTime,
-          });
-
-          return c.json({ error: "Missing signature header" }, 401);
-        }
-
-        const isValid = verifySignature(rawBody, signature, webhook.secret);
-        if (!isValid) {
-          await saveEvent({
-            webhookName: webhook.name,
-            path: requestPath,
-            method,
-            headers,
-            body,
-            status: "failed",
-            error: "Invalid signature",
-            responseTime: Date.now() - startTime,
-          });
-
-          return c.json({ error: "Invalid signature" }, 401);
-        }
-      }
-
-      const validatedPayload = webhook.schema.parse(body);
-
+      // Save event as received
       const event = await saveEvent({
         webhookName: webhook.name,
         path: requestPath,
         method,
         headers,
-        body: validatedPayload,
+        body,
         status: "received",
       });
 
+      const targetUrl = `${proxyUrl}${webhook.path}`;
+      console.log(`→ Proxying ${method} ${requestPath} to ${targetUrl}`);
+
+      const proxyResponse = await fetch(targetUrl, {
+        method,
+        headers: {
+          ...headers,
+          host: new URL(proxyUrl).host,
+        },
+        body: rawBody,
+      });
+
+      const responseTime = Date.now() - startTime;
+      const responseBody = await proxyResponse.text();
+      let responseJson;
+
       try {
-        await webhook.handler(validatedPayload);
+        responseJson = JSON.parse(responseBody);
+      } catch {
+        responseJson = responseBody;
+      }
 
-        await updateEventStatus(event.id, "success", Date.now() - startTime);
-
+      // Update event status based on response
+      if (proxyResponse.ok) {
+        await updateEventStatus(event.id, "success", responseTime);
         console.log(
-          `✓ ${webhook.name} processed successfully (${
-            Date.now() - startTime
-          }ms)`
+          `✓ ${webhook.name} processed successfully (${responseTime}ms)`
         );
-
-        return c.json({ success: true, eventId: event.id });
-      } catch (handlerError) {
+      } else {
         const errorMessage =
-          handlerError instanceof Error
-            ? handlerError.message
-            : "Handler error";
-
-        await updateEventStatus(
-          event.id,
-          "failed",
-          Date.now() - startTime,
-          errorMessage
-        );
-
-        console.error(`✗ ${webhook.name} handler failed:`, errorMessage);
-
-        return c.json(
-          { error: "Handler execution failed", details: errorMessage },
-          500
+          responseJson?.error || `HTTP ${proxyResponse.status}`;
+        await updateEventStatus(event.id, "failed", responseTime, errorMessage);
+        console.error(
+          `✗ ${webhook.name} failed: ${errorMessage} (${responseTime}ms)`
         );
       }
+
+      return c.json(responseJson, proxyResponse.status as any);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
+      const responseTime = Date.now() - startTime;
 
-      console.error(`✗ ${webhook.name} validation failed:`, errorMessage);
+      console.error(`✗ ${webhook.name} proxy error:`, errorMessage);
 
-      return c.json({ error: "Validation failed", details: errorMessage }, 400);
+      return c.json({ error: "Proxy failed", details: errorMessage }, 500);
     }
   });
 
   return {
     app,
-    async loadWebhooks() {
-      webhooks = await loadWebhooks(hooksDir);
+    scanWebhooks() {
+      if (config?.webhooks) {
+        webhooks = scanWebhooks(config.webhooks);
+      }
       return webhooks;
     },
     getWebhooks() {

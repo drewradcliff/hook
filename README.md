@@ -1,49 +1,70 @@
 # hook
 
-A TypeScript-native webhook platform.
+TypeScript-native webhooks
 
-Test, verify, replay, and debug your app's webhooks — locally or deployed.
+Test, verify, replay, and debug your app's webhooks
 
 ## Features
 
 - 🎯 **Type-safe webhooks** with Zod schemas
-- 🔄 **Event replay**
-- 📊 **Self Hosted Dashboard**
-- 🔐 **Signature verification** built-in
+- 🔄 **Event replay** for debugging
+- 📊 **Self-hosted Dashboard** for monitoring
 - 💾 **SQLite persistence** for all events
-- 🚀 **Works locally and in production**
 
-## Quick Start
+## Quick Start (Nextjs example)
 
 ```bash
 # Install dependencies
 pnpm install
 
-# Initialize hook config
-pnpm hook init
+# Build
+pnpm build
 
-# Start the dev server
-pnpm dev
+# Start your Next.js app
+cd examples/my-app
+npm run dev
 
-# In another terminal, test a webhook
-curl -X POST http://localhost:3420/webhooks/example \
+# In another terminal, start hook dev server
+pnpm hook dev
+
+# Test a webhook
+curl -X POST http://localhost:3420/api/webhooks/example \
   -H "Content-Type: application/json" \
   -d '{"message":"Hello from Hook!"}'
 
+# View the dashboard
+open http://localhost:3420/
+
 # Replay event
 pnpm hook replay 1
-
-# View the dashboard
-open http://localhost:3420/_dashboard
 ```
 
-## Example Webhook
+## Next.js Integration
 
-`.hook/hooks/github.push.ts`:
+Hook uses a **convention-based approach** that automatically detects webhooks from your Next.js route structure.
+
+### 1. Configure Hook
+
+Create `hook.config.ts` in your project root:
 
 ```typescript
+import { defineConfig } from "@hook/core";
+
+export default defineConfig({
+  out: "./hook",
+  webhooks: "./app/api/webhooks",
+});
+```
+
+### 2. Create Webhook Routes
+
+Define webhooks directly in Next.js route handlers:
+
+**`app/api/webhooks/github/push/route.ts`**:
+
+```typescript
+import { handleWebhook } from "@hook/core/next";
 import { z } from "zod";
-import { defineWebhook } from "@hook/core";
 
 const githubPushSchema = z.object({
   ref: z.string(),
@@ -57,20 +78,29 @@ const githubPushSchema = z.object({
   }),
 });
 
-export default defineWebhook({
-  name: "github.push",
-  path: "/webhooks/github/push",
-  method: "POST",
-  secret: process.env.GITHUB_WEBHOOK_SECRET,
-  signatureHeader: "X-Hub-Signature-256",
-  schema: githubPushSchema,
-  handler: async (payload) => {
-    console.log(
-      `Push to ${payload.repository.full_name} by ${payload.pusher.name}`
-    );
-  },
+export const POST = handleWebhook(githubPushSchema, async (payload) => {
+  console.log(
+    `Push to ${payload.repository.full_name} by ${payload.pusher.name}`
+  );
+
+  // Your business logic here
+
+  return { success: true };
 });
 ```
+
+### 3. Run Hook Dev Server
+
+```bash
+npx hook dev
+```
+
+The Hook dev server (port 3420) will:
+
+- Auto-detect all webhooks in `./app/api/webhooks/`
+- Proxy requests to your app
+- Log all events to a local database
+- Provide a dashboard to view and replay events
 
 ## License
 

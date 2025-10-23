@@ -1,7 +1,15 @@
 import fs from "fs";
 import path from "path";
 import { pathToFileURL } from "url";
-import type { WebhookDefinition } from "./define.js";
+import z from "zod";
+
+interface WebhookConfig<T extends z.ZodType> {
+  name: string;
+  path: string;
+  schema: T;
+}
+
+type WebhookDefinition = WebhookConfig<z.ZodType>;
 
 export async function loadWebhooks(
   hooksDir: string = ".hook/hooks"
@@ -26,7 +34,7 @@ export async function loadWebhooks(
       const module = await import(`${fileUrl}?t=${Date.now()}`);
       const webhook = module.default as WebhookDefinition;
 
-      if (!webhook || !webhook.name || !webhook.path) {
+      if (!webhook || !webhook.name || !webhook.path || !webhook.schema) {
         console.warn(`Invalid webhook definition in ${file}`);
         continue;
       }

@@ -1,6 +1,6 @@
 import { defineConfig } from "@hook/core";
 
 export default defineConfig({
-  out: "./hook",
+  out: "./.hook",
   webhooks: "./app/api/webhooks",
 });

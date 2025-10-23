@@ -9,6 +9,7 @@ import {
 } from "./events.js";
 import { replayEvent } from "./replay.js";
 import { scanWebhooks, type WebhookMetadata } from "./scanner.js";
+import { getMockData, saveMockData, getAllMocks } from "./mocks.js";
 import type { HookConfig } from "./config.js";
 import path from "path";
 import fs from "fs";
@@ -55,6 +56,145 @@ export function createServer(options: ServerOptions = {}) {
     const result = await replayEvent(id, webhooks, proxyUrl);
 
     return c.json(result);
+  });
+
+  app.get("/api/webhooks", async (c) => {
+    const webhookList = Array.from(webhooks.values());
+    const mocks = await getAllMocks();
+    
+    const webhooksWithMocks = webhookList.map((webhook) => {
+      const mock = mocks.find((m) => m.webhookName === webhook.name);
+      return {
+        name: webhook.name,
+        path: webhook.path,
+        mockData: mock ? JSON.parse(mock.mockData) : {},
+      };
+    });
+
+    return c.json({ webhooks: webhooksWithMocks });
+  });
+
+  app.post("/api/webhooks/scan", async (c) => {
+    if (config?.webhooks) {
+      webhooks = scanWebhooks(config.webhooks);
+    }
+    
+    const webhookList = Array.from(webhooks.values());
+    const mocks = await getAllMocks();
+    
+    const webhooksWithMocks = webhookList.map((webhook) => {
+      const mock = mocks.find((m) => m.webhookName === webhook.name);
+      return {
+        name: webhook.name,
+        path: webhook.path,
+        mockData: mock ? JSON.parse(mock.mockData) : { test: true },
+      };
+    });
+
+    return c.json({ webhooks: webhooksWithMocks });
+  });
+
+  app.post("/api/webhooks/:name/test", async (c) => {
+    const name = c.req.param("name");
+    const webhook = webhooks.get(name);
+
+    if (!webhook) {
+      return c.json({ error: "Webhook not found" }, 404);
+    }
+
+    const body = await c.req.json();
+    const mockData = body.mockData || { test: true };
+
+    await saveMockData(name, webhook.path, mockData);
+
+    const startTime = Date.now();
+
+    try {
+      const targetUrl = `${proxyUrl}${webhook.path}`;
+      console.log(`→ Testing ${name} at ${targetUrl}`);
+
+      const response = await fetch(targetUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          host: new URL(proxyUrl).host,
+        },
+        body: JSON.stringify(mockData),
+      });
+
+      const responseTime = Date.now() - startTime;
+      const responseBody = await response.text();
+      let responseJson;
+
+      try {
+        responseJson = JSON.parse(responseBody);
+      } catch {
+        responseJson = responseBody;
+      }
+
+      await saveEvent({
+        webhookName: name,
+        path: webhook.path,
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: mockData,
+        status: response.ok ? "success" : "failed",
+        responseTime,
+        error: response.ok ? undefined : `HTTP ${response.status}`,
+      });
+
+      return c.json({
+        success: response.ok,
+        status: response.status,
+        responseTime,
+        data: responseJson,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      const responseTime = Date.now() - startTime;
+
+      console.error(`✗ Test failed for ${name}:`, errorMessage);
+
+      return c.json(
+        {
+          success: false,
+          error: errorMessage,
+          responseTime,
+        },
+        500
+      );
+    }
+  });
+
+  app.get("/api/webhooks/:name/mock", async (c) => {
+    const name = c.req.param("name");
+    const mock = await getMockData(name);
+
+    if (!mock) {
+      return c.json({ mockData: { test: true } });
+    }
+
+    return c.json({ mockData: JSON.parse(mock.mockData) });
+  });
+
+  app.put("/api/webhooks/:name/mock", async (c) => {
+    const name = c.req.param("name");
+    const webhook = webhooks.get(name);
+
+    if (!webhook) {
+      return c.json({ error: "Webhook not found" }, 404);
+    }
+
+    const body = await c.req.json();
+    const mockData = body.mockData;
+
+    const saved = await saveMockData(name, webhook.path, mockData);
+
+    return c.json({
+      success: true,
+      mockData: JSON.parse(saved.mockData),
+    });
   });
 
   if (dashboardDir && fs.existsSync(dashboardDir)) {

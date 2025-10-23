@@ -40,8 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Hook
-/hook/events.db
-/hook/events.db-journal
-/hook/events.db-shm
-/hook/events.db-wal
+# hook
+/.hook/

@@ -1,12 +1,13 @@
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
+import { sql } from "drizzle-orm";
 import * as schema from "./schema.js";
 import path from "path";
 import fs from "fs";
 
 let db: ReturnType<typeof drizzle> | null = null;
 
-export function initDatabase(dbPath: string = "./hook/events.db") {
+export async function initDatabase(dbPath: string = "./.hook/events.db") {
   const dir = path.dirname(dbPath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -18,7 +19,7 @@ export function initDatabase(dbPath: string = "./hook/events.db") {
 
   db = drizzle(client, { schema });
 
-  initSchema();
+  await initSchema();
 
   return db;
 }
@@ -26,7 +27,7 @@ export function initDatabase(dbPath: string = "./hook/events.db") {
 async function initSchema() {
   if (!db) return;
 
-  await db.run(`
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       webhook_name TEXT NOT NULL,
@@ -38,12 +39,25 @@ async function initSchema() {
       response_time INTEGER,
       error TEXT,
       timestamp INTEGER NOT NULL
-    );
-    
-    CREATE INDEX IF NOT EXISTS idx_webhook_name ON events(webhook_name);
-    CREATE INDEX IF NOT EXISTS idx_timestamp ON events(timestamp DESC);
-    CREATE INDEX IF NOT EXISTS idx_status ON events(status);
+    )
   `);
+  
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_webhook_name ON events(webhook_name)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_timestamp ON events(timestamp DESC)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_status ON events(status)`);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS webhook_mocks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      webhook_name TEXT NOT NULL UNIQUE,
+      path TEXT NOT NULL,
+      mock_data TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+  
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_webhook_mocks_name ON webhook_mocks(webhook_name)`);
 }
 
 export function getDatabase() {

@@ -62,3 +62,86 @@ export async function replayEvent(id: number): Promise<ReplayResponse> {
 
   return response.json();
 }
+
+export interface Webhook {
+  name: string;
+  path: string;
+  mockData: any;
+}
+
+export interface WebhooksResponse {
+  webhooks: Webhook[];
+}
+
+export interface TestWebhookResponse {
+  success: boolean;
+  status?: number;
+  responseTime: number;
+  data?: any;
+  error?: string;
+}
+
+export interface MockDataResponse {
+  mockData: any;
+}
+
+export async function fetchWebhooks(): Promise<Webhook[]> {
+  const response = await fetch(`${API_BASE}/webhooks`);
+  if (!response.ok) throw new Error("Failed to fetch webhooks");
+
+  const data: WebhooksResponse = await response.json();
+  return data.webhooks;
+}
+
+export async function scanWebhooks(): Promise<Webhook[]> {
+  const response = await fetch(`${API_BASE}/webhooks/scan`, {
+    method: "POST",
+  });
+  if (!response.ok) throw new Error("Failed to scan webhooks");
+
+  const data: WebhooksResponse = await response.json();
+  return data.webhooks;
+}
+
+export async function testWebhook(
+  name: string,
+  mockData: any
+): Promise<TestWebhookResponse> {
+  const response = await fetch(`${API_BASE}/webhooks/${name}/test`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ mockData }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error || "Failed to test webhook");
+  }
+
+  return response.json();
+}
+
+export async function getMockData(name: string): Promise<any> {
+  const response = await fetch(`${API_BASE}/webhooks/${name}/mock`);
+  if (!response.ok) throw new Error("Failed to fetch mock data");
+
+  const data: MockDataResponse = await response.json();
+  return data.mockData;
+}
+
+export async function saveMockData(name: string, mockData: any): Promise<any> {
+  const response = await fetch(`${API_BASE}/webhooks/${name}/mock`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ mockData }),
+  });
+
+  if (!response.ok) throw new Error("Failed to save mock data");
+
+  const data: MockDataResponse = await response.json();
+  return data.mockData;
+}

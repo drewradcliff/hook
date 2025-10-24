@@ -17,7 +17,7 @@ export async function devCommand() {
 
     console.log(chalk.dim("Initializing database..."));
     const dbPath = path.join(config.out, "events.db");
-    initDatabase(dbPath);
+    await initDatabase(dbPath);
 
     console.log(chalk.dim("Creating server..."));
     const dashboardDir = findDashboardDir();

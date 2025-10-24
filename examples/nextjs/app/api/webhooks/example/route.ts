@@ -10,7 +10,6 @@ export const POST = handleWebhook(exampleSchema, async (payload) => {
   console.log("Received webhook:", payload.message);
 
   // Business logic here
-  // payload is fully typed: payload.message is string, payload.timestamp is string | undefined
 
   return { success: true, received: payload.message };
 });

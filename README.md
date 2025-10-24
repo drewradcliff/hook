@@ -11,39 +11,11 @@ Test, verify, replay, and debug your app's webhooks
 - 📊 **Self-hosted Dashboard** for monitoring
 - 💾 **SQLite persistence** for all events
 
-## Quick Start (Nextjs example)
-
-```bash
-# Install dependencies
-pnpm install
-
-# Build
-pnpm build
-
-# Start your Next.js app
-cd examples/my-app
-npm run dev
-
-# In another terminal, start hook dev server
-pnpm hook dev
-
-# Test a webhook
-curl -X POST http://localhost:3420/api/webhooks/example \
-  -H "Content-Type: application/json" \
-  -d '{"message":"Hello from Hook!"}'
-
-# View the dashboard
-open http://localhost:3420/
-
-# Replay event
-pnpm hook replay 1
-```
-
 ## Next.js Integration
 
 Hook uses a **convention-based approach** that automatically detects webhooks from your Next.js route structure.
 
-### 1. Configure Hook
+### 1. Configure Hook (Optional)
 
 Create `hook.config.ts` in your project root:
 
@@ -83,8 +55,6 @@ export const POST = handleWebhook(githubPushSchema, async (payload) => {
     `Push to ${payload.repository.full_name} by ${payload.pusher.name}`
   );
 
-  // Your business logic here
-
   return { success: true };
 });
 ```
@@ -95,11 +65,11 @@ export const POST = handleWebhook(githubPushSchema, async (payload) => {
 npx hook dev
 ```
 
-The Hook dev server (port 3420) will:
+The Hook dev server will:
 
 - Auto-detect all webhooks in `./app/api/webhooks/`
 - Proxy requests to your app
-- Log all events to a local database
+- Log all events locally
 - Provide a dashboard to view and replay events
 
 ## License

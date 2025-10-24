@@ -11,7 +11,7 @@ export function defineConfig(config: HookConfig): HookConfig {
 }
 
 const DEFAULT_CONFIG: HookConfig = {
-  out: "./hook",
+  out: "./.hook",
   webhooks: "./app/api/webhooks",
 };
 

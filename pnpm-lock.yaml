@@ -36,6 +36,9 @@ importers:
       '@hook/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@hook/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.1.15
@@ -156,6 +159,19 @@ importers:
       vite:
         specifier: ^5.0.8
         version: 5.4.21(@types/node@20.19.23)(lightningcss@1.30.2)
+
+  packages/schemas:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.23
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
 
 packages:
 

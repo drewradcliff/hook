@@ -21,6 +21,7 @@
     "@tailwindcss/postcss": "^4",
     "tailwindcss": "^4",
     "@hook/core": "workspace:*",
+    "@hook/schemas": "workspace:*",
     "hook": "workspace:*"
   }
 }

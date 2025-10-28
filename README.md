@@ -20,7 +20,7 @@ Hook uses a **convention-based approach** that automatically detects webhooks fr
 Create `hook.config.ts` in your project root:
 
 ```typescript
-import { defineConfig } from "@hook/core";
+import { defineConfig } from "@hook/core/next";
 
 export default defineConfig({
   out: "./hook",

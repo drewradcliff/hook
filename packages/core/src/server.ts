@@ -61,7 +61,7 @@ export function createServer(options: ServerOptions = {}) {
   app.get("/api/webhooks", async (c) => {
     const webhookList = Array.from(webhooks.values());
     const mocks = await getAllMocks();
-    
+
     const webhooksWithMocks = webhookList.map((webhook) => {
       const mock = mocks.find((m) => m.webhookName === webhook.name);
       return {
@@ -78,10 +78,10 @@ export function createServer(options: ServerOptions = {}) {
     if (config?.webhooks) {
       webhooks = scanWebhooks(config.webhooks);
     }
-    
+
     const webhookList = Array.from(webhooks.values());
     const mocks = await getAllMocks();
-    
+
     const webhooksWithMocks = webhookList.map((webhook) => {
       const mock = mocks.find((m) => m.webhookName === webhook.name);
       return {

@@ -1,43 +1,34 @@
 import { z } from "zod";
 
-export function handleWebhook<T extends z.ZodType>(
-  schema: T,
-  handler: (payload: z.infer<T>) => Promise<any> | any
-): (request: Request) => Promise<Response> {
-  return async (request: Request) => {
-    try {
-      // Parse request body
-      const body = await request.json();
+export async function hook<T extends z.ZodType>(
+  request: Request,
+  schema: T
+): Promise<
+  | { data: z.infer<T>; error: null }
+  | { data: null; error: { message: string; issues?: any[] } }
+> {
+  try {
+    const body = await request.json();
+    const parseResult = schema.safeParse(body);
 
-      // Validate against schema
-      const parseResult = schema.safeParse(body);
-
-      if (!parseResult.success) {
-        return Response.json(
-          {
-            error: "Validation failed",
-            issues: parseResult.error.issues,
-          },
-          { status: 400 }
-        );
-      }
-
-      // Call user's handler with validated payload
-      const result = await handler(parseResult.data);
-
-      // Return success response
-      return Response.json(result, { status: 200 });
-    } catch (error) {
-      // Handle errors from parsing or handler execution
-      const errorMessage =
-        error instanceof Error ? error.message : "Internal server error";
-
-      return Response.json(
-        {
-          error: errorMessage,
+    if (!parseResult.success) {
+      return {
+        data: null,
+        error: {
+          message: "Validation failed",
+          issues: parseResult.error.issues,
         },
-        { status: 500 }
-      );
+      };
     }
-  };
+
+    return { data: parseResult.data, error: null };
+  } catch (error) {
+    return {
+      data: null,
+      error: {
+        message:
+          error instanceof Error ? error.message : "Failed to parse request",
+      },
+    };
+  }
 }

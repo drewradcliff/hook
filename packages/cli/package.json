@@ -1,13 +1,18 @@
 {
-  "name": "@hook/cli",
+  "name": "hook",
   "version": "0.1.0",
   "type": "module",
   "bin": {
     "hook": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "dashboard"
+  ],
   "scripts": {
-    "build": "tsc",
-    "clean": "rm -rf dist",
+    "build": "pnpm build:dashboard && tsc",
+    "build:dashboard": "cd ../dashboard && pnpm build && cd ../cli && rm -rf dashboard && mkdir -p dashboard && cp -r ../dashboard/dist/* dashboard/",
+    "clean": "rm -rf dist dashboard",
     "dev": "tsx src/index.ts dev",
     "start": "tsx src/index.ts"
   },

@@ -114,6 +114,7 @@ export async function devCommand() {
 
 function findDashboardDir(): string | undefined {
   const possiblePaths = [
+    path.join(__dirname, "../dashboard"),
     path.join(__dirname, "../../../dashboard/dist"),
     path.join(__dirname, "../../../../dashboard/dist"),
     path.join(process.cwd(), "node_modules/@hook/dashboard/dist"),

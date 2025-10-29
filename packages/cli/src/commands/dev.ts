@@ -46,14 +46,6 @@ export async function devCommand() {
       chalk.dim("Dashboard: "),
       chalk.cyan(`http://localhost:${port}/`)
     );
-    console.log(
-      chalk.dim("API:       "),
-      chalk.cyan(`http://localhost:${port}/api/events`)
-    );
-    console.log(
-      chalk.dim("Database:  "),
-      chalk.cyan(path.join(config.out, "events.db"))
-    );
 
     if (webhooks.size > 0) {
       console.log(chalk.dim("\nWebhook endpoints:"));
@@ -114,9 +106,12 @@ export async function devCommand() {
 
 function findDashboardDir(): string | undefined {
   const possiblePaths = [
+    // When running from dist or src (both resolve to cli package root)
+    path.join(__dirname, "../../dashboard"),
+    // When running from monorepo root in development
     path.join(__dirname, "../../../dashboard/dist"),
-    path.join(__dirname, "../../../../dashboard/dist"),
-    path.join(process.cwd(), "node_modules/@hook/dashboard/dist"),
+    // When installed as a package
+    path.join(process.cwd(), "node_modules/hook/dashboard"),
   ];
 
   for (const p of possiblePaths) {

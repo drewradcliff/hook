@@ -33,9 +33,6 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
     devDependencies:
-      '@hook/cli':
-        specifier: workspace:*
-        version: link:../../packages/cli
       '@hook/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -51,6 +48,9 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.2.2(@types/react@19.2.2)
+      hook:
+        specifier: workspace:*
+        version: link:../../packages/cli
       tailwindcss:
         specifier: ^4
         version: 4.1.15

@@ -20,7 +20,7 @@ Hook uses a **convention-based approach** that automatically detects webhooks fr
 Create `hook.config.ts` in your project root:
 
 ```typescript
-import { defineConfig } from "@hook/core";
+import { defineConfig } from "@hook/core/next";
 
 export default defineConfig({
   out: "./hook",
@@ -35,7 +35,7 @@ Define webhooks directly in Next.js route handlers:
 **`app/api/webhooks/github/push/route.ts`**:
 
 ```typescript
-import { handleWebhook } from "@hook/core/next";
+import { hook } from "@hook/core/next";
 import { z } from "zod";
 
 const githubPushSchema = z.object({
@@ -50,13 +50,19 @@ const githubPushSchema = z.object({
   }),
 });
 
-export const POST = handleWebhook(githubPushSchema, async (payload) => {
-  console.log(
-    `Push to ${payload.repository.full_name} by ${payload.pusher.name}`
-  );
+export const POST = async (request: Request) => {
+  const { data, error } = await hook(request, githubPushSchema);
 
-  return { success: true };
-});
+  if (error) {
+    return Response.json({ error: error.message }, { status: 400 });
+  }
+
+  console.log(`Push to ${data.repository.full_name} by ${data.pusher.name}`);
+
+  // Your business logic here
+
+  return Response.json({ success: true });
+};
 ```
 
 ### 3. Run Hook Dev Server

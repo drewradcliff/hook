@@ -68,6 +68,7 @@ export function createServer(options: ServerOptions = {}) {
         name: webhook.name,
         path: webhook.path,
         mockData: mock ? JSON.parse(mock.mockData) : {},
+        mockHeaders: mock?.mockHeaders ? JSON.parse(mock.mockHeaders) : {},
       };
     });
 
@@ -88,6 +89,7 @@ export function createServer(options: ServerOptions = {}) {
         name: webhook.name,
         path: webhook.path,
         mockData: mock ? JSON.parse(mock.mockData) : { test: true },
+        mockHeaders: mock?.mockHeaders ? JSON.parse(mock.mockHeaders) : {},
       };
     });
 
@@ -104,8 +106,9 @@ export function createServer(options: ServerOptions = {}) {
 
     const body = await c.req.json();
     const mockData = body.mockData || { test: true };
+    const customHeaders = body.headers || {};
 
-    await saveMockData(name, webhook.path, mockData);
+    await saveMockData(name, webhook.path, mockData, customHeaders);
 
     const startTime = Date.now();
 
@@ -113,12 +116,16 @@ export function createServer(options: ServerOptions = {}) {
       const targetUrl = `${proxyUrl}${webhook.path}`;
       console.log(`→ Testing ${name} at ${targetUrl}`);
 
+      // Merge custom headers with required headers
+      const headers = {
+        "Content-Type": "application/json",
+        host: new URL(proxyUrl).host,
+        ...customHeaders,
+      };
+
       const response = await fetch(targetUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          host: new URL(proxyUrl).host,
-        },
+        headers,
         body: JSON.stringify(mockData),
       });
 
@@ -136,7 +143,7 @@ export function createServer(options: ServerOptions = {}) {
         webhookName: name,
         path: webhook.path,
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: mockData,
         status: response.ok ? "success" : "failed",
         responseTime,
@@ -172,10 +179,13 @@ export function createServer(options: ServerOptions = {}) {
     const mock = await getMockData(name);
 
     if (!mock) {
-      return c.json({ mockData: { test: true } });
+      return c.json({ mockData: { test: true }, mockHeaders: {} });
     }
 
-    return c.json({ mockData: JSON.parse(mock.mockData) });
+    return c.json({
+      mockData: JSON.parse(mock.mockData),
+      mockHeaders: mock.mockHeaders ? JSON.parse(mock.mockHeaders) : {},
+    });
   });
 
   app.put("/api/webhooks/:name/mock", async (c) => {
@@ -188,12 +198,14 @@ export function createServer(options: ServerOptions = {}) {
 
     const body = await c.req.json();
     const mockData = body.mockData;
+    const mockHeaders = body.mockHeaders;
 
-    const saved = await saveMockData(name, webhook.path, mockData);
+    const saved = await saveMockData(name, webhook.path, mockData, mockHeaders);
 
     return c.json({
       success: true,
       mockData: JSON.parse(saved.mockData),
+      mockHeaders: saved.mockHeaders ? JSON.parse(saved.mockHeaders) : {},
     });
   });
 

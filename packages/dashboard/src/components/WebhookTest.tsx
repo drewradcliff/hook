@@ -12,14 +12,24 @@ function WebhookTest({ webhook }: WebhookTestProps) {
   const [jsonInput, setJsonInput] = useState(
     JSON.stringify(webhook.mockData, null, 2)
   );
+  const [headersInput, setHeadersInput] = useState(
+    JSON.stringify(webhook.mockHeaders || {}, null, 2)
+  );
   const [jsonError, setJsonError] = useState<string | null>(null);
+  const [headersError, setHeadersError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<any>(null);
 
   const queryClient = useQueryClient();
 
   const testMutation = useMutation({
-    mutationFn: async (mockData: any) => {
-      const result = await testWebhook(webhook.name, mockData);
+    mutationFn: async ({
+      mockData,
+      headers,
+    }: {
+      mockData: any;
+      headers: Record<string, string>;
+    }) => {
+      const result = await testWebhook(webhook.name, mockData, headers);
       return result;
     },
     onSuccess: (data) => {
@@ -43,8 +53,14 @@ function WebhookTest({ webhook }: WebhookTestProps) {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (mockData: any) => {
-      await saveMockData(webhook.name, mockData);
+    mutationFn: async ({
+      mockData,
+      headers,
+    }: {
+      mockData: any;
+      headers: Record<string, string>;
+    }) => {
+      await saveMockData(webhook.name, mockData, headers);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["webhooks"] });
@@ -57,35 +73,82 @@ function WebhookTest({ webhook }: WebhookTestProps) {
     setTestResult(null);
   };
 
+  const handleHeadersChange = (value: string) => {
+    setHeadersInput(value);
+    setHeadersError(null);
+    setTestResult(null);
+  };
+
   const validateAndParse = (): any | null => {
     try {
       const parsed = JSON.parse(jsonInput);
       setJsonError(null);
       return parsed;
     } catch (error) {
-      setJsonError(
-        error instanceof Error ? error.message : "Invalid JSON"
-      );
+      setJsonError(error instanceof Error ? error.message : "Invalid JSON");
+      return null;
+    }
+  };
+
+  const validateAndParseHeaders = (): Record<string, string> | null => {
+    try {
+      const parsed = JSON.parse(headersInput);
+      setHeadersError(null);
+      return parsed;
+    } catch (error) {
+      setHeadersError(error instanceof Error ? error.message : "Invalid JSON");
       return null;
     }
   };
 
   const handleTest = () => {
     const mockData = validateAndParse();
-    if (mockData !== null) {
-      testMutation.mutate(mockData);
+    const headers = validateAndParseHeaders();
+    if (mockData !== null && headers !== null) {
+      testMutation.mutate({ mockData, headers });
     }
   };
 
   const handleSave = () => {
     const mockData = validateAndParse();
-    if (mockData !== null) {
-      saveMutation.mutate(mockData);
+    const headers = validateAndParseHeaders();
+    if (mockData !== null && headers !== null) {
+      saveMutation.mutate({ mockData, headers });
     }
   };
 
   return (
     <div className="mt-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+      <div className="mb-3">
+        <label className="block text-sm font-medium text-gray-400 mb-2">
+          Headers (JSON)
+        </label>
+        <div className="border border-gray-700 rounded overflow-hidden">
+          {/* @ts-ignore - Type compatibility issue with React 18 */}
+          <CodeEditor
+            value={headersInput}
+            language="json"
+            placeholder='{"X-GitHub-Event": "push"}'
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+              handleHeadersChange(e.target.value)
+            }
+            padding={12}
+            style={{
+              fontSize: 13,
+              backgroundColor: "#1a1a1a",
+              fontFamily:
+                'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, monospace',
+              minHeight: "80px",
+            }}
+          />
+        </div>
+        {headersError && (
+          <p className="mt-2 text-sm text-red-400">
+            JSON Error: {headersError}
+          </p>
+        )}
+      </div>
+
       <div className="mb-3">
         <label className="block text-sm font-medium text-gray-400 mb-2">
           Mock Data (JSON)
@@ -96,7 +159,9 @@ function WebhookTest({ webhook }: WebhookTestProps) {
             value={jsonInput}
             language="json"
             placeholder="Enter JSON mock data"
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleJsonChange(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+              handleJsonChange(e.target.value)
+            }
             padding={12}
             style={{
               fontSize: 13,
@@ -108,23 +173,21 @@ function WebhookTest({ webhook }: WebhookTestProps) {
           />
         </div>
         {jsonError && (
-          <p className="mt-2 text-sm text-red-400">
-            JSON Error: {jsonError}
-          </p>
+          <p className="mt-2 text-sm text-red-400">JSON Error: {jsonError}</p>
         )}
       </div>
 
       <div className="flex gap-2 mb-4">
         <button
           onClick={handleTest}
-          disabled={testMutation.isPending || !!jsonError}
+          disabled={testMutation.isPending || !!jsonError || !!headersError}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded text-sm font-medium transition-colors"
         >
           {testMutation.isPending ? "Testing..." : "Send Test"}
         </button>
         <button
           onClick={handleSave}
-          disabled={saveMutation.isPending || !!jsonError}
+          disabled={saveMutation.isPending || !!jsonError || !!headersError}
           className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-white rounded text-sm font-medium transition-colors"
         >
           {saveMutation.isPending ? "Saving..." : "Save"}
@@ -165,4 +228,3 @@ function WebhookTest({ webhook }: WebhookTestProps) {
 }
 
 export default WebhookTest;
-

@@ -18,6 +18,7 @@ export const webhookMocks = sqliteTable("webhook_mocks", {
   webhookName: text("webhook_name").notNull().unique(),
   path: text("path").notNull(),
   mockData: text("mock_data").notNull(), // JSON string
+  mockHeaders: text("mock_headers"), // JSON string
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });

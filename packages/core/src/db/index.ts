@@ -41,9 +41,13 @@ async function initSchema() {
       timestamp INTEGER NOT NULL
     )
   `);
-  
-  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_webhook_name ON events(webhook_name)`);
-  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_timestamp ON events(timestamp DESC)`);
+
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_webhook_name ON events(webhook_name)`
+  );
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_timestamp ON events(timestamp DESC)`
+  );
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_status ON events(status)`);
 
   await db.run(sql`
@@ -52,12 +56,22 @@ async function initSchema() {
       webhook_name TEXT NOT NULL UNIQUE,
       path TEXT NOT NULL,
       mock_data TEXT NOT NULL,
+      mock_headers TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )
   `);
-  
-  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_webhook_mocks_name ON webhook_mocks(webhook_name)`);
+
+  // Migration: Add mock_headers column if it doesn't exist
+  try {
+    await db.run(sql`ALTER TABLE webhook_mocks ADD COLUMN mock_headers TEXT`);
+  } catch {
+    // Column already exists, ignore error
+  }
+
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_webhook_mocks_name ON webhook_mocks(webhook_name)`
+  );
 }
 
 export function getDatabase() {

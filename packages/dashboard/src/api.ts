@@ -67,6 +67,7 @@ export interface Webhook {
   name: string;
   path: string;
   mockData: any;
+  mockHeaders?: Record<string, string>;
 }
 
 export interface WebhooksResponse {
@@ -105,14 +106,15 @@ export async function scanWebhooks(): Promise<Webhook[]> {
 
 export async function testWebhook(
   name: string,
-  mockData: any
+  mockData: any,
+  headers?: Record<string, string>
 ): Promise<TestWebhookResponse> {
   const response = await fetch(`${API_BASE}/webhooks/${name}/test`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ mockData }),
+    body: JSON.stringify({ mockData, headers }),
   });
 
   if (!response.ok) {
@@ -131,13 +133,17 @@ export async function getMockData(name: string): Promise<any> {
   return data.mockData;
 }
 
-export async function saveMockData(name: string, mockData: any): Promise<any> {
+export async function saveMockData(
+  name: string,
+  mockData: any,
+  mockHeaders?: Record<string, string>
+): Promise<any> {
   const response = await fetch(`${API_BASE}/webhooks/${name}/mock`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ mockData }),
+    body: JSON.stringify({ mockData, mockHeaders }),
   });
 
   if (!response.ok) throw new Error("Failed to save mock data");

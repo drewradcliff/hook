@@ -14,6 +14,8 @@ program
 program
   .command("dev")
   .description("Start local development server")
+  .option("-p, --port <port>", "Port for hook server", "3420")
+  .option("--proxy-url <url>", "URL where your app is running")
   .action(devCommand);
 
 program

@@ -1,31 +1,29 @@
 # hook
 
-TypeScript-native webhooks
-
-Test, verify, replay, and debug your app's webhooks
+Dev tools for webhooks
 
 ## Features
 
-- 🎯 **Type-safe webhooks** with Zod schemas
+- 🎯 **Type-safe** schema validation
 - 🔄 **Event replay** for debugging
-- 📊 **Self-hosted Dashboard** for monitoring
-- 💾 **SQLite persistence** for all events
+- 📊 **Dashboard** for monitoring
+- 💾 **Persisted logs** for all events
 
 ## Next.js Integration
 
-Hook uses a **convention-based approach** that automatically detects webhooks from your Next.js route structure.
+hook uses a **convention-based approach** that automatically detects webhooks from your route structure.
 
-### 1. Configure Hook (Optional)
+### 1. Configure hook (Optional)
 
-Create `hook.config.ts` in your project root:
+Create `hook.config.mjs` in your project root:
 
-```typescript
-import { defineConfig } from "@hook/core";
-
-export default defineConfig({
-  out: "./hook",
+```javascript
+/** @type {import('@hook/core').HookConfig} */
+export default {
+  out: "./.hook",
   webhooks: "./app/api/webhooks",
-});
+  proxyUrl: "http://localhost:3000",
+};
 ```
 
 ### 2. Create Webhook Routes
@@ -59,8 +57,6 @@ export const POST = async (request: Request) => {
 
   console.log(`Push to ${data.repository.full_name} by ${data.pusher.name}`);
 
-  // Your business logic here
-
   return Response.json({ success: true });
 };
 ```
@@ -71,12 +67,20 @@ export const POST = async (request: Request) => {
 npx hook dev
 ```
 
-The Hook dev server will:
+## CLI
 
-- Auto-detect all webhooks in `./app/api/webhooks/`
-- Proxy requests to your app
-- Log all events locally
-- Provide a dashboard to view and replay events
+### `hook dev`
+
+Start the Hook development server.
+
+**Options:**
+
+- `--port`, `-p` &nbsp;&nbsp;&nbsp;&nbsp;Port for the Hook dev server (default: `3420`)
+- `--proxy-url` &nbsp;URL where your application is running (default: `http://localhost:3000`)
+
+### `hook replay <event_id>`
+
+Replay a recorded webhook event by its number (ID).
 
 ## License
 

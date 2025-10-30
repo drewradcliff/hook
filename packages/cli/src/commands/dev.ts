@@ -8,8 +8,13 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export async function devCommand() {
-  const port = 3420;
+interface DevOptions {
+  port?: string;
+  proxyUrl?: string;
+}
+
+export async function devCommand(options: DevOptions = {}) {
+  const port = parseInt(options.port || "3420", 10);
 
   try {
     console.log(chalk.dim("Loading configuration..."));
@@ -21,7 +26,14 @@ export async function devCommand() {
 
     console.log(chalk.dim("Creating server..."));
     const dashboardDir = findDashboardDir();
-    const server = createServer({ port, config, dashboardDir });
+    const proxyUrl =
+      options.proxyUrl || config.proxyUrl || "http://localhost:3000";
+    const server = createServer({
+      port,
+      config,
+      dashboardDir,
+      proxyUrl,
+    });
 
     console.log(chalk.dim("Scanning webhooks...\n"));
     server.scanWebhooks();
@@ -46,6 +58,7 @@ export async function devCommand() {
       chalk.dim("Dashboard: "),
       chalk.cyan(`http://localhost:${port}/`)
     );
+    console.log(chalk.dim("Proxy target: "), chalk.cyan(proxyUrl));
 
     if (webhooks.size > 0) {
       console.log(chalk.dim("\nWebhook endpoints:"));

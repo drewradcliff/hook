@@ -9,7 +9,7 @@ export {
 } from "./events.js";
 export { replayEvent } from "./replay.js";
 export { scanWebhooks } from "./scanner.js";
-export { hook } from "./next.js";
+export { hook } from "./handler.js";
 export { getMockData, saveMockData, getAllMocks } from "./mocks.js";
 
 export type { HookConfig } from "./config.js";

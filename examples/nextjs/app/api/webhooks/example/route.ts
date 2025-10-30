@@ -1,4 +1,4 @@
-import { hook } from "@hook/core/next";
+import { hook } from "@hook/core/handler";
 import { z } from "zod";
 
 const schema = z.object({

@@ -9,9 +9,9 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./next": {
-      "types": "./dist/next.d.ts",
-      "default": "./dist/next.js"
+    "./handler": {
+      "types": "./dist/handler.d.ts",
+      "default": "./dist/handler.js"
     }
   },
   "scripts": {

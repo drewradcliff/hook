@@ -20,7 +20,7 @@ Hook uses a **convention-based approach** that automatically detects webhooks fr
 Create `hook.config.ts` in your project root:
 
 ```typescript
-import { defineConfig } from "@hook/core/next";
+import { defineConfig } from "@hook/core";
 
 export default defineConfig({
   out: "./hook",
@@ -35,7 +35,7 @@ Define webhooks directly in Next.js route handlers:
 **`app/api/webhooks/github/push/route.ts`**:
 
 ```typescript
-import { hook } from "@hook/core/next";
+import { hook } from "@hook/core/handler";
 import { z } from "zod";
 
 const githubPushSchema = z.object({
